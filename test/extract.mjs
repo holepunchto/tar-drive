@@ -1,18 +1,17 @@
 import test from 'brittle'
 import fs from 'fs'
 import Localdrive from 'localdrive'
-import { pipeline } from 'streamx'
+import { pipelinePromise } from 'streamx'
 
 import { extract } from '../index.js'
 
-test('extract', async (t) => {
-  t.plan(1)
-
+test('extract localdrive', async (t) => {
   const drive = new Localdrive('test/fixtures/extract')
 
-  pipeline(
+  await pipelinePromise(
     fs.createReadStream('test/fixtures/archive.tar'),
-    extract(drive),
-    (err) => t.absent(err)
+    extract(drive)
   )
+
+  t.pass()
 })

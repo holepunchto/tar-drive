@@ -1,18 +1,17 @@
 import test from 'brittle'
 import fs from 'fs'
 import Localdrive from 'localdrive'
-import { pipeline } from 'streamx'
+import { pipelinePromise } from 'streamx'
 
 import { pack } from '../index.js'
 
-test('pack', async (t) => {
-  t.plan(1)
-
+test('pack localdrive', async (t) => {
   const drive = new Localdrive('test/fixtures/pack')
 
-  pipeline(
+  await pipelinePromise(
     pack(drive),
-    fs.createWriteStream('test/fixtures/archive.tar'),
-    (err) => t.absent(err)
+    fs.createWriteStream('test/fixtures/archive.tar')
   )
+
+  t.pass()
 })
