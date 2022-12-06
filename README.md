@@ -25,6 +25,7 @@ Options include:
 
 ```js
 {
+  pack: tarStream.pack(options)
 }
 ```
 
@@ -34,6 +35,7 @@ Options include:
 
 ```js
 {
+  extract: tarStream.extract(options)
 }
 ```
 
