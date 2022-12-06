@@ -1,9 +1,9 @@
 const tar = require('tar-stream')
-const pump = require('pump')
+const { pipelinePromise } = require('streamx')
 
 exports.pack = function (drive, opts = {}) {
   const {
-    pack = tar.pack()
+    pack = tar.pack(opts)
   } = opts
 
   work()
@@ -20,32 +20,59 @@ exports.pack = function (drive, opts = {}) {
         }
       } = file
 
+      const type = linkname ? 'symlink' : 'file'
+
       const header = {
         name: key,
-        type: 'file',
-        size: 0
+        type,
+        size: 0,
+        linkname
       }
 
-      if (linkname) {
-        header.type = 'symlink'
-      }
-
-      if (blob) {
+      if (type === 'file') {
         header.size = blob.byteLength
       }
 
       const entry = pack.entry(header)
-      if (!entry) continue
 
-      if (blob) {
-        await new Promise((resolve, reject) => pump(
-          drive.createReadStream(key),
-          entry,
-          (err) => err ? reject(err) : resolve()
-        ))
+      if (!entry) return pack.destroy(new Error(`cannot pack ${key}`))
+
+      if (type === 'file') {
+        await pipelinePromise(drive.createReadStream(key), entry)
       }
+
+      entry.end()
     }
 
     pack.finalize()
   }
+}
+
+exports.extract = function (drive, opts = {}) {
+  const {
+    extract = tar.extract(opts)
+  } = opts
+
+  extract.on('entry', async function (header, stream, next) {
+    const {
+      type,
+      name,
+      linkname
+    } = header
+
+    if (type === 'symlink') {
+      drive.symlink(name, linkname)
+    }
+
+    if (type === 'file') {
+      await pipelinePromise(
+        stream,
+        drive.createWriteStream(name)
+      )
+    }
+
+    next()
+  })
+
+  return extract
 }
