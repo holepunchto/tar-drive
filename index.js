@@ -13,8 +13,9 @@ exports.pack = function (drive, opts = {}) {
   async function work () {
     for await (const file of drive.list('/', { recursive: true })) {
       const {
-        key,
+        key: name,
         value: {
+          executable,
           linkname,
           blob
         }
@@ -23,10 +24,15 @@ exports.pack = function (drive, opts = {}) {
       const type = linkname ? 'symlink' : 'file'
 
       const header = {
-        name: key,
+        name,
         type,
+        mode: 0o644,
         size: 0,
         linkname
+      }
+
+      if (executable) {
+        header.mode |= 0o100
       }
 
       if (type === 'file') {
@@ -35,10 +41,10 @@ exports.pack = function (drive, opts = {}) {
 
       const entry = pack.entry(header)
 
-      if (!entry) return pack.destroy(new Error(`cannot pack ${key}`))
+      if (!entry) return pack.destroy(new Error(`cannot pack ${name}`))
 
       if (type === 'file') {
-        await pipelinePromise(drive.createReadStream(key), entry)
+        await pipelinePromise(drive.createReadStream(name), entry)
       }
 
       entry.end()
@@ -57,18 +63,21 @@ exports.extract = function (drive, opts = {}) {
     const {
       type,
       name,
-      linkname
+      linkname,
+      mode
     } = header
+
+    const executable = (mode & 0o100) !== 0
 
     if (type === 'symlink') {
       drive.symlink(name, linkname)
-    }
-
-    if (type === 'file') {
+    } else if (type === 'file') {
       await pipelinePromise(
         stream,
-        drive.createWriteStream(name)
+        drive.createWriteStream(name, { executable })
       )
+    } else {
+      extract.destroy(new Error(`cannot extract ${name}`))
     }
 
     next()
