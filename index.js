@@ -1,9 +1,12 @@
 const tar = require('tar-stream')
 const { pipelinePromise } = require('streamx')
 
-exports.pack = function (drive, opts = {}) {
+exports.pack = function pack (drive, opts = {}) {
   const {
-    pack = tar.pack(opts)
+    pack = tar.pack(),
+    map = defaultMap,
+    ignore = defaultIgnore,
+    prefix = '/'
   } = opts
 
   work()
@@ -11,7 +14,7 @@ exports.pack = function (drive, opts = {}) {
   return pack
 
   async function work () {
-    for await (const file of drive.list('/', { recursive: true })) {
+    for await (const file of drive.list(prefix, { recursive: true })) {
       const {
         key: name,
         value: {
@@ -20,6 +23,8 @@ exports.pack = function (drive, opts = {}) {
           blob
         }
       } = file
+
+      if (ignore(name)) continue
 
       const type = linkname ? 'symlink' : 'file'
 
@@ -39,7 +44,7 @@ exports.pack = function (drive, opts = {}) {
         header.size = blob.byteLength
       }
 
-      const entry = pack.entry(header)
+      const entry = pack.entry(map(header))
 
       if (!entry) return pack.destroy(new Error(`cannot pack ${name}`))
 
@@ -56,16 +61,22 @@ exports.pack = function (drive, opts = {}) {
 
 exports.extract = function (drive, opts = {}) {
   const {
-    extract = tar.extract(opts)
+    extract = tar.extract(),
+    map = defaultMap,
+    ignore = defaultIgnore
   } = opts
 
-  extract.on('entry', async function (header, stream, next) {
+  extract.on('entry', async (header, stream, next) => {
+    header = map(header)
+
     const {
       type,
       name,
       linkname,
       mode
     } = header
+
+    if (ignore(name, header)) return next()
 
     const executable = (mode & 0o100) !== 0
 
@@ -84,4 +95,12 @@ exports.extract = function (drive, opts = {}) {
   })
 
   return extract
+}
+
+function defaultMap (header) {
+  return header
+}
+
+function defaultIgnore (name, header) {
+  return false
 }
