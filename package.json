@@ -1,6 +1,6 @@
 {
   "name": "tar-drive",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Hyperdrive bindings for tar-stream",
   "main": "index.js",
   "files": [
