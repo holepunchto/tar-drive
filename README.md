@@ -8,7 +8,7 @@ npm install tar-drive
 
 ```js
 const fs = require('fs')
-const tar = require('tar-drive')
+const tar = require('@holepunchto/tar-drive')
 
 // packing a drive
 tar.pack(drive).pipe(fs.createWriteStream('archive.tar'))

@@ -1,5 +1,5 @@
 {
-  "name": "tar-drive",
+  "name": "@holepunchto/tar-drive",
   "version": "1.0.1",
   "description": "Hyperdrive bindings for tar-stream",
   "main": "index.js",
